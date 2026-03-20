@@ -25,3 +25,27 @@ Standard commands are documented in `package.json` scripts and `CLAUDE.md`. Key 
 - **Container image must be built** before agents can run: `./container/build.sh` (requires Docker).
 - **Pre-commit hook** runs `npm run format:fix` automatically via Husky.
 - **CI checks** (see `.github/workflows/ci.yml`): format:check, tsc --noEmit, vitest run.
+
+### Docker setup in Cloud VM
+
+Docker must be installed and configured for the nested Docker-in-Docker environment:
+
+1. Install Docker engine packages
+2. Install `fuse-overlayfs` and configure `/etc/docker/daemon.json` with `"storage-driver": "fuse-overlayfs"`
+3. Switch to `iptables-legacy` via `update-alternatives`
+4. Start dockerd: `sudo dockerd &>/tmp/dockerd.log &`
+5. Fix socket permissions: `sudo chmod 666 /var/run/docker.sock`
+
+### Hello world verification
+
+To verify the full pipeline (credential proxy + container + Claude Agent SDK):
+
+1. Ensure `ANTHROPIC_API_KEY` is in `.env`
+2. Build the container: `./container/build.sh`
+3. Start `npm run dev` — should show "Credential proxy started" with `authMode: "api-key"`
+4. The process exits with "No channels connected" unless a messaging channel is configured (this is expected)
+5. All 219 unit tests pass without Docker or API key: `npm test`
+
+### Container image
+
+The agent container image (`nanoclaw-agent:latest`, ~1.6GB) includes Node.js 22, Chromium, `agent-browser`, and `@anthropic-ai/claude-code`. It compiles agent-runner TypeScript on each boot from `/app/src` (mounted per-group for customization). Build time is ~60s.
